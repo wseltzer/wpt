@@ -446,6 +446,58 @@ class SourceFile(object):
         return self.dpi_nodes[0].attrib.get("content", None)
 
     @cached_property
+    def fuzzy_nodes(self):
+        """List of ElementTree Elements corresponding to nodes in a test that
+        specify reftest fuzziness"""
+        return self.root.findall(".//{http://www.w3.org/1999/xhtml}meta[@name='fuzzy']")
+
+    @cached_property
+    def fuzzy(self):
+        rv = {}
+        if self.root is None:
+            return rv
+
+        if not self.fuzzy_nodes:
+            return rv
+
+        for node in self.fuzzy_nodes:
+            item = node.attrib.get("content", "")
+
+            parts = item.rsplit(":", 1)
+            if len(parts) == 1:
+                key = None
+                value = parts[0]
+            else:
+                key = urljoin(self.url, parts[0])
+                reftype = None
+                for ref in self.references:
+                    print ref, key, ref[0] == key
+                    if ref[0] == key:
+                        reftype = ref[1]
+                        break
+                if reftype not in ("==", "!="):
+                    raise ValueError("Fuzzy key %s doesn't correspond to a references" % key)
+                key = (self.url, key, reftype)
+                value = parts[1]
+                ranges = value.split(";")
+            rv[key] = []
+            if len(ranges) != 2:
+                raise ValueError("Malformed fuzzy value %s" % item)
+            for range_str_value in ranges:
+                if "-" in range_str_value:
+                    range_min, range_max = range_str_value.split("-")
+                else:
+                    range_min = range_str_value
+                    range_max = range_str_value
+                try:
+                    range_value = [int(x.strip()) for x in (range_min, range_max)]
+                except ValueError:
+                    raise ValueError("Fuzzy value %s must be a range of integers" %
+                                     range_str_value)
+                rv[key].append(range_value)
+        return rv
+
+    @cached_property
     def testharness_nodes(self):
         """List of ElementTree Elements corresponding to nodes representing a
         testharness.js script"""
@@ -662,7 +714,7 @@ class SourceFile(object):
         elif self.content_is_ref_node:
             rv = (RefTestNode.item_type,
                   [RefTestNode(self, self.url, self.references, timeout=self.timeout,
-                               viewport_size=self.viewport_size, dpi=self.dpi)])
+                               viewport_size=self.viewport_size, dpi=self.dpi, fuzzy=self.fuzzy)])
 
         elif self.content_is_css_visual and not self.name_is_reference:
             rv = VisualTest.item_type, [VisualTest(self, self.url)]

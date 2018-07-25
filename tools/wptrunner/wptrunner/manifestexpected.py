@@ -82,6 +82,48 @@ def lsan_allowed(node):
     return rv
 
 
+def fuzzy_prop(node):
+    """Property containing a range of the form a-b. Either part can be empty and will be replaced with None"""
+    rv = []
+    try:
+        value = node.get("fuzzy")
+    except KeyError:
+        return rv
+    if not isinstance(value, list):
+        value = [value]
+    for item in value:
+        if not isinstance(item, (str, unicode)):
+            rv.append(item)
+            continue
+        parts = item.rsplit(":", 1)
+        if len(parts) == 1:
+            key = None
+            fuzzy_values = parts[0]
+        else:
+            key, fuzzy_values = parts
+            for reftype in ["==", "!="]:
+                if reftype in key:
+                    key = key.split(reftype)
+                    key.append(reftype)
+        ranges = fuzzy_values.split(";")
+        if len(ranges) != 2:
+            raise ValueError("Malformed fuzzy value %s" % item)
+        range_values = []
+        for range_str_value in ranges:
+            if "-" in range_str_value:
+                range_min, range_max = range_str_value.split("-")
+            else:
+                range_min = range_str_value
+                range_max = range_str_value
+            try:
+                range_value = tuple(int(item.strip()) for item in (range_min, range_max))
+            except ValueError:
+                raise ValueError("Fuzzy value %s must be a range of integers" % range_str_value)
+            range_values.append(range_value)
+        rv.append((key, tuple(range_values)))
+    return rv
+
+
 class ExpectedManifest(ManifestItem):
     def __init__(self, name, test_path, url_base):
         """Object representing all the tests in a particular manifest
@@ -160,6 +202,10 @@ class ExpectedManifest(ManifestItem):
     def lsan_max_stack_depth(self):
         return int_prop("lsan-max-stack-depth", self)
 
+    @property
+    def fuzzy(self):
+        return fuzzy_prop(self)
+
 
 class DirectoryManifest(ManifestItem):
     @property
@@ -197,6 +243,11 @@ class DirectoryManifest(ManifestItem):
     @property
     def lsan_max_stack_depth(self):
         return int_prop("lsan-max-stack-depth", self)
+
+    @property
+    def fuzzy(self):
+        return fuzzy_prop(self)
+
 
 class TestNode(ManifestItem):
     def __init__(self, name):
@@ -261,6 +312,10 @@ class TestNode(ManifestItem):
     @property
     def lsan_max_stack_depth(self):
         return int_prop("lsan-max-stack-depth", self)
+
+    @property
+    def fuzzy(self):
+        return fuzzy_prop(self)
 
     def append(self, node):
         """Add a subtest to the current test

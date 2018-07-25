@@ -112,10 +112,46 @@ only guaranteed to be after those events.
 ## Fuzzy Matching
 
 In some situations a test may have subtle differences in rendering
-compared to the reference due to, e.g., anti-aliasing. This may cause
-the test to pass on some platforms but fail on others. In this case
-some affordance for subtle discrepancies is desirable. However no
-mechanism to allow this has yet been standardized.
+compared to the reference due to, e.g., anti-aliasing. To allow for
+these small differences, we allow tests to specify a fuzziness
+characterised by two parameters:
+
+ * A difference in the per-channel color value for any pixel.
+ * A number of total pixels that may be different
+
+To specify the fuzziness in the test file one may add a `<meta
+name=fuzzy>` element (or, in the case of more complex tests, to any
+page containing the `<link rel=[mis]match>` elements). In the simplest
+case this has a `content` attribute containing the parameters above,
+separated by a colon e.g.
+
+```
+<meta name=fuzzy content="15;300">
+```
+
+would allow for a  difference of exactly 15 / 255 on any color channel
+and 300 exactly pixels total difference. The values may also be given as
+ranges e.g.
+
+```
+<meta name=fuzzy content="10-15;200-300">
+```
+
+In this case the maximum pixel difference must be in the range
+`10-15` and the total number of different pixels must be in the range
+`200-300`.
+
+In cases where a single test has multiple possible refs and the
+fuzziness is not the same for all refs, a ref may be specified by
+prefixing the `content` value with the relative url for the ref e.g.
+
+```
+<meta name=fuzzy content="option1-ref.html:10-15;200-300">
+```
+
+One meta element is required per reference requiring a unique
+fuzziness value, but any unprefixed value will automatically be
+applied to any ref that doesn't have a more specific value.
 
 ## Limitations
 
