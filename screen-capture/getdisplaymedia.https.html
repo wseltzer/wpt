@@ -103,6 +103,36 @@ promise_test(function() {
       });
 }, 'getDisplayMedia() call with max constraint');
 
+promise_test(function() {
+  assert_idl_attribute(navigator, 'getDisplayMedia');
+
+  const maxWidth = 360;
+  const maxFrameRate = 4;
+  return navigator
+      .getDisplayMedia(
+          {video: {width: {max: maxWidth}, frameRate: {max: maxFrameRate}}})
+      .then(function(s) {
+        assert_equals(s.getVideoTracks().length, 1);
+        assert_equals(s.getAudioTracks().length, 0);
+        const settings = s.getVideoTracks()[0].getSettings();
+        assert_equals(settings.width, maxWidth);
+        assert_equals(settings.frameRate, maxFrameRate);
+      });
+}, 'getDisplayMedia() call with constraints applied');
+
+promise_test(function() {
+  assert_idl_attribute(navigator, 'getDisplayMedia');
+
+  return navigator
+      .getDisplayMedia({video: {width: {max: 0}}})
+      .then(function(s) {
+        fail('getDisplayMedia should have failed');
+      })
+      .catch(function(e) {
+        assert_equals(e.name, 'OverconstrainedError');
+      });
+}, 'getDisplayMedia() call overconstrained');
+
 // Content shell picks a fake desktop device by default.
 promise_test(function() {
   assert_idl_attribute(navigator, 'getDisplayMedia');
