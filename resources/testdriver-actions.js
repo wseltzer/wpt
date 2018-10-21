@@ -98,7 +98,7 @@
      * @returns {Actions}
      */
     addKeyboard: function(name, set=true) {
-      this.createSource("key", name, true);
+      this.createSource("key", name);
       if (set) {
         this.setKeyboard(name);
       }
@@ -125,7 +125,7 @@
      * @returns {Actions}
      */
     addPointer: function(name, pointerType="mouse", set=true) {
-      this.createSource("pointer", name, true, {pointerType: pointerType});
+      this.createSource("pointer", name, {pointerType: pointerType});
       if (set) {
         this.setPointer(name);
       }
@@ -225,9 +225,9 @@
      *                               pointer source
      * @returns {Actions}
      */
-    pointerDown: function({button=0, sourceName=null}={}) {
+    pointerDown: function(x, y, {origin=null, button="left", sourceName=null}={}) {
       let source = this.getSource("pointer", sourceName);
-      source.pointerDown(this, button);
+      source.pointerDown(this, button, x, y, origin);
       return this;
     },
 
@@ -239,7 +239,7 @@
      *                               source
      * @returns {Actions}
      */
-    pointerUp: function({button=0, sourceName=null}={}) {
+    pointerUp: function({button="left", sourceName=null}={}) {
       let source = this.getSource("pointer", sourceName);
       source.pointerUp(this, button);
       return this;
@@ -258,7 +258,7 @@
      * @returns {Actions}
      */
     pointerMove: function(x, y,
-                          {origin="viewport", duration, sourceName=null}={}) {
+                          {origin=null, duration, sourceName=null}={}) {
       let source = this.getSource("pointer", sourceName);
       source.pointerMove(this, x, y, duration, origin);
       return this;
@@ -359,12 +359,15 @@
       return data;
     },
 
-    pointerDown: function(actions, button) {
+    pointerDown: function(actions, button, x, y, origin) {
       let tick = actions.tickIdx;
       if (this.actions.has(tick)) {
         tick = actions.addTick().tickIdx;
       }
-      this.actions.set(tick, {type: "pointerDown", button});
+      this.actions.set(tick, {type: "pointerDown", button, x, y});
+      if (origin) {
+        this.actions.get(tick).origin = origin;
+      }
     },
 
     pointerUp: function(actions, button) {
@@ -380,7 +383,10 @@
       if (this.actions.has(tick)) {
         tick = actions.addTick().tickIdx;
       }
-      this.actions.set(tick, {type: "pointerMove", x, y, origin});
+      this.actions.set(tick, {type: "pointerMove", x, y});
+      if (origin) {
+        this.actions.get(tick).origin = origin;
+      }
       if (duration) {
         this.actions.get(tick).duration = duration;
       }

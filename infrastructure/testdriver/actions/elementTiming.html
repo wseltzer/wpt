@@ -8,7 +8,7 @@
 <script src="/resources/testdriver-vendor.js"></script>
 
 <style>
-div#test1, div#test2 {
+div#test1 {
   position: fixed;
   top: 0;
   left: 0;
@@ -18,8 +18,11 @@ div#test1, div#test2 {
 }
 
 div#test2 {
-  display: none;
-  left: -100px;
+  position: fixed;
+  top: 100px;
+  left: 0;
+  width: 100px;
+  height: 100px;
   background-color: green;
 }
 </style>
@@ -36,12 +39,9 @@ let events = [];
 async_test(t => {
   let test1 = document.getElementById("test1");
   let test2 = document.getElementById("test2");
-  document.getElementById("test1").addEventListener("click",
-    () => {test2.style.display = "block"; test2.style.top = "100px"; test2.style.left = "0"});
   document.getElementById("test2").addEventListener("click",
     e => {events.push(e.clientX); events.push(e.clientY)});
 
-  let div = document.getElementById("backing");
   let actions = new test_driver.Actions()
     .pointerMove(0, 0, {origin: test1})
     .pointerDown()

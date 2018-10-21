@@ -192,7 +192,41 @@
          * @returns {Promise} fufiled after the actions are performed, or rejected in
          *                    the cases the WebDriver command errors
          */
-        action_sequence(actions) {
+        action_sequence: function(actions) {
+            if (window.top !== window) {
+                return Promise.reject(new Error("can only send keys in top-level window"));
+            }
+
+            for (let i = 0; i < actions.length; i++) {
+                let x, y;
+                for (let j = 0; j < actions[i].actions.length; j++) {
+                    if (actions[i].actions[j].hasOwnProperty('origin')) {
+                        let element = actions[i].actions[j].origin;
+                        if (!window.document.contains(element)) {
+                            return Promise.reject(new Error("element in different document or shadow tree"));
+                        }
+
+                        if (!inView(element)) {
+                            element.scrollIntoView({behavior: "instant",
+                                                    block: "end",
+                                                    inline: "nearest"});
+                        }
+
+                        var pointerInteractablePaintTree = getPointerInteractablePaintTree(element);
+                        if (pointerInteractablePaintTree.length === 0 ||
+                            !element.contains(pointerInteractablePaintTree[0])) {
+                            return Promise.reject(new Error("element click intercepted error"));
+                        }
+
+                        var rect = element.getClientRects()[0];
+                        var centerPoint = getInViewCenterPoint(rect);
+                        x = centerPoint[0];
+                        y = centerPoint[1];
+                    }
+                    actions[i].actions[j].x = x;
+                    actions[i].actions[j].y = y;
+                }
+            }
             return window.test_driver_internal.action_sequence(actions);
         }
     };
@@ -233,7 +267,7 @@
         /**
          * Send a sequence of pointer actions
          *
-         * @returns {Promise} fufilled after actions are sent, rejected if any actions
+         * @returns {Promise} fulfilled after actions are sent, rejected if any actions
          *                    fail
          */
         action_sequence: function(actions) {
